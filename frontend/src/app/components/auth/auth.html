@@ -1,0 +1,73 @@
+<div class="auth-container">
+  <div class="auth-header">
+    <h1>ANKAREF</h1>
+    <p>Kurumsal Faaliyet ve Etkinlik Takip Platformu</p>
+  </div>
+
+  <div class="auth-card">
+    @if (currentTab !== 'verify') {
+    <div class="auth-tabs">
+      <button [class.active]="currentTab === 'login'" (click)="switchTab('login')">Giriş Yap</button>
+      <button [class.active]="currentTab === 'register'" (click)="switchTab('register')">Kayıt Ol</button>
+    </div>
+    }
+
+    @if (errorMessage) { <div class="alert alert-danger">{{ errorMessage }}</div> }
+    @if (successMessage) { <div class="alert alert-success">{{ successMessage }}</div> }
+
+    @if (currentTab === 'login') {
+    <form (ngSubmit)="onLogin()">
+      <div class="form-group">
+        <label>E-Posta Adresi</label>
+        <input type="email" [(ngModel)]="email" name="email" placeholder="ornek@hotmail.com" required>
+      </div>
+      <div class="form-group">
+        <label>Şifre</label>
+        <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-primary" [disabled]="isLoading">
+        {{ isLoading ? 'Giriş Yapılıyor...' : 'Sisteme Giriş Yap' }}
+      </button>
+    </form>
+    }
+
+
+    @if (currentTab === 'register') {
+    <form (ngSubmit)="onRegister()">
+      <div class="form-group">
+        <label>Ad Soyad</label>
+        <input type="text" [(ngModel)]="fullName" name="fullName" placeholder="Eren ..." required>
+      </div>
+      <div class="form-group">
+        <label>Kurumsal E-Posta</label>
+        <input type="email" [(ngModel)]="email" name="email" placeholder="ornek@hotmail.com" required>
+      </div>
+      <div class="form-group">
+        <label>Şifre Belirleyin</label>
+        <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-primary" [disabled]="isLoading">
+        {{ isLoading ? 'Kayıt Oluşturuluyor...' : 'Hesap Oluştur ve Kod Gönder' }}
+      </button>
+    </form>
+    }
+
+    @if (currentTab === 'verify') {
+    <div class="verify-section">
+      <div class="verify-icon">🔒</div>
+      <h3>E-Posta Doğrulama</h3>
+      <p><strong>{{ email }}</strong> adresine gönderilen 6 haneli güvenlik kodunu giriniz.</p>
+
+      <form (ngSubmit)="onVerify()">
+        <div class="form-group">
+          <input type="text" [(ngModel)]="verificationCode" name="verificationCode" class="code-input" placeholder="123456" maxlength="6" required>
+        </div>
+        <button type="submit" class="btn-primary" [disabled]="isLoading">
+          {{ isLoading ? 'Doğrulanıyor...' : 'Kodu Onayla ve Tamamla' }}
+        </button>
+      </form>
+      <button class="btn-link" (click)="switchTab('login')">← Giriş Ekranına Dön</button>
+    </div>
+    }
+  </div>
+</div>

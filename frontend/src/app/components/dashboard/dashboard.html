@@ -1,0 +1,372 @@
+<div class="dashboard-layout">
+
+  <!-- SİDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>ANKAREF</h2>
+      <span>FAALİYET TAKİP</span>
+    </div>
+
+    <div class="user-profile">
+      <div class="avatar">{{ currentUser?.fullName?.charAt(0) }}</div>
+      <div class="info">
+        <strong>{{ currentUser?.fullName }}</strong>
+        <span class="badge" [class.admin]="isAdmin">{{ isAdmin ? 'Yönetici (Admin)' : 'Personel' }}</span>
+      </div>
+    </div>
+
+    <ul class="nav-links">
+      <li>
+        <a [class.active]="activeTab === 'activities'" (click)="activeTab = 'activities'; resetAlerts()">
+          📌 Faaliyet Listesi
+        </a>
+      </li>
+      @if (isAdmin) {
+      <li>
+        <a [class.active]="activeTab === 'create'" (click)="activeTab = 'create'; resetAlerts()">
+          ➕ Yeni Faaliyet Ekle
+        </a>
+      </li>
+      <li>
+        <a [class.active]="activeTab === 'users'" (click)="activeTab = 'users'; resetAlerts()">
+          👥 Kullanıcı Yönetimi
+        </a>
+      </li>
+      }
+      <li>
+        <a [class.active]="activeTab === 'notifications'" (click)="activeTab = 'notifications'; resetAlerts()">
+          🔔 Bildirimler & Davetler
+          @if (notifications.length > 0) { <span class="notif-count">{{ notifications.length }}</span> }
+        </a>
+      </li>
+      <li class="logout-link">
+        <a (click)="logout()">🚪 Güvenli Çıkış</a>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- ANA İÇERİK -->
+  <main class="main-content">
+    <header class="top-navbar">
+      <h1>{{ activeTab === 'activities' ? 'Sistemdeki Faaliyetler' : activeTab === 'create' ? 'Yönetici Kontrol Paneli' : activeTab === 'users' ? 'Kullanıcı Yönetimi' : 'Duyurular ve Davetlerim' }}</h1>
+    </header>
+
+    <div class="content-body">
+
+      @if (message) { <div class="alert alert-success">{{ message }}</div> }
+      @if (error) { <div class="alert alert-danger">{{ error }}</div> }
+
+      @if (activeTab === 'activities') {
+      @if (isAdmin) {
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <h3>{{ stats.totalActivities }}</h3>
+          <p>📌 Toplam Faaliyet</p>
+        </div>
+        <div class="stat-card green">
+          <h3>{{ stats.completedActivities }}</h3>
+          <p>✔ Tamamlanan</p>
+        </div>
+        <div class="stat-card orange">
+          <h3>{{ stats.ongoingActivities }}</h3>
+          <p>⏳ Devam Eden</p>
+        </div>
+        <div class="stat-card purple">
+          <h3>{{ stats.totalUsers }}</h3>
+          <p>👥 Kayıtlı Personel</p>
+        </div>
+      </div>
+      }
+
+      <div class="search-bar-card">
+        <input type="text" [(ngModel)]="searchKeyword" (keyup.enter)="loadActivities(0)" placeholder="🔍 Başlık veya açıklama ile arayın... (Enter'a basın)" />
+
+        <select [(ngModel)]="selectedFilterCategory" (change)="loadActivities(0)">
+          <option value="">📁 Tüm Kategoriler</option>
+          @for (cat of categories; track cat.id) {
+          <option [value]="cat.id">{{ cat.name }}</option>
+          }
+        </select>
+
+        <select [(ngModel)]="selectedFilterStatus" (change)="loadActivities(0)">
+          <option value="ONGOING">⏳ Devam Edenler (Aktif)</option>
+          <option value="COMPLETED">✔ Tamamlananlar (Geçmiş)</option>
+          <option value="">📋 Tüm Faaliyetler</option>
+        </select>
+
+        <select [(ngModel)]="pageSize" (change)="loadActivities(0)" class="page-size-select">
+          <option [ngValue]="1">1'er Listele</option>
+          <option [ngValue]="5">5'er Listele</option>
+          <option [ngValue]="10">10'ar Listele</option>
+          <option [ngValue]="20">20'şer Listele</option>
+        </select>
+
+        <button class="btn-primary" (click)="loadActivities(0)">Filtrele</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Tüm Etkinlikler ve Faaliyet Tablosu</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+            <tr>
+              <th>Başlık</th>
+              <th>Kategori</th>
+              <th>Tarih</th>
+              <th>Oluşturan</th>
+              <th>Durum</th>
+              <th>Ek Dokümanlar</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for (act of activities; track act.id) {
+            <tr>
+              <td><strong>{{ act.title }}</strong><br /><small>{{ act.description }}</small></td>
+              <td><span class="cat-badge">{{ act.category?.name }}</span></td>
+              <td>{{ act.activityDate | date:'dd.MM.yyyy HH:mm' }}</td>
+              <td>{{ act.creator?.fullName }}</td>
+              <td>
+                      <span class="status-badge" [class.completed]="act.completionDate">
+                        {{ act.completionDate ? 'Tamamlandı' : 'Devam Ediyor' }}
+                      </span>
+              </td>
+              <td>
+                <button class="btn-info" (click)="openFileManager(act)">📎 Ekleri Yönet</button>
+              </td>
+            </tr>
+            }
+            @if (activities.length === 0) {
+            <tr><td colspan="6" class="text-center">Kriterlere uygun faaliyet bulunamadı.</td></tr>
+            }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages > 1) {
+        <div class="pagination">
+          <button [disabled]="currentPage === 0" (click)="loadActivities(currentPage - 1)">⬅ Önceki</button>
+          <span>Sayfa {{ currentPage + 1 }} / {{ totalPages }}</span>
+          <button [disabled]="currentPage === totalPages - 1" (click)="loadActivities(currentPage + 1)">Sonraki ➡</button>
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 2. SEKME: YENİ FAALİYET EKLE -->
+      @if (activeTab === 'create' && isAdmin) {
+      <div class="grid-2">
+
+        <div class="card">
+          <div class="card-header">1. Hızlı Kategori Tanımla</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Kategori Adı (Örn: Eğitim, Yemek, Proje)</label>
+              <input type="text" [(ngModel)]="newCategoryName" placeholder="Kategori adı yazın..." />
+            </div>
+            <button class="btn-primary" (click)="createCategory()">Kategoriyi Kaydet</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">2. Yeni Faaliyet ve Davet Oluştur</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Faaliyet Başlığı</label>
+              <input type="text" [(ngModel)]="newActivity.title" placeholder="Etkinlik başlığı..." />
+            </div>
+            <div class="form-group">
+              <label>Kategori Seçin</label>
+              <select [(ngModel)]="newActivity.categoryId">
+                <option [ngValue]="null">-- Kategori Seçiniz --</option>
+                @for (cat of categories; track cat.id) {
+                <option [ngValue]="cat.id">{{ cat.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Faaliyet Tarihi ve Saati</label>
+              <input type="datetime-local" [(ngModel)]="newActivity.activityDate" />
+            </div>
+            <div class="form-group">
+              <label>Açıklama</label>
+              <textarea [(ngModel)]="newActivity.description" rows="3" placeholder="Detayları yazın..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>👥 Personel Davet Et (Çoklu Seçim):</label>
+              <div class="user-checkbox-list">
+                @for (u of users; track u.id) {
+                <label class="checkbox-item">
+                  <input type="checkbox" (change)="toggleUserSelection(u.id, $event)" />
+                  {{ u.fullName }} <small>({{ u.email }})</small>
+                </label>
+                }
+                @if (users.length === 0) { <small>Sistemde davet edilecek başka personel yok.</small> }
+              </div>
+            </div>
+
+            <button class="btn-primary" (click)="createActivity()">Faaliyeti Oluştur ve Davetleri Gönder</button>
+          </div>
+        </div>
+
+      </div>
+      }
+
+      <!-- 3. SEKME: BİLDİRİMLER VE DAVETLER -->
+      @if (activeTab === 'notifications') {
+      <div class="grid-2">
+
+        <div class="card">
+          <div class="card-header">📨 Bekleyen Faaliyet Davetlerim</div>
+          <div class="card-body">
+            @for (inv of invitations; track inv.id) {
+            <div class="invitation-item">
+              <div class="inv-info">
+                <strong>{{ inv.activity?.title }}</strong>
+                <p><small>{{ inv.activity?.description }}</small></p>
+
+                <span class="badge"
+                      [class.accepted]="inv.status === 'ACCEPTED'"
+                      [class.rejected]="inv.status === 'REJECTED'"
+                      [class.pending]="inv.status === 'PENDING'">
+                      Durum: {{ inv.status === 'ACCEPTED' ? '✔ Onaylandı' :
+                                inv.status === 'REJECTED' ? '✖ Reddedildi' : '⏳ Onay Bekliyor' }}
+                    </span>
+              </div>
+
+              @if (inv.status === 'PENDING') {
+              <div class="inv-actions">
+                <button class="btn-success" (click)="respond(inv.id, 'ACCEPTED')">✔ Katılıyorum</button>
+                <button class="btn-danger" (click)="respond(inv.id, 'REJECTED')">✖ Reddet</button>
+              </div>
+              }
+            </div>
+            }
+            @if (invitations.length === 0) {
+            <p class="text-center">Henüz size gönderilen bir davet bulunmuyor.</p>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🔔 Sistem Bildirimleri</span>
+            @if (notifications.length > 0) {
+            <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" (click)="clearNotifications()">🗑️ Temizle</button>
+            }
+          </div>
+          <div class="card-body">
+            <div class="notification-list">
+              @for (notif of notifications; track notif.id) {
+              <div class="notification-item" style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <p style="margin: 0; font-size: 0.9rem;">{{ notif.message }}</p>
+                <small style="color: #8898aa;">{{ notif.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
+              </div>
+              }
+              @if (notifications.length === 0) {
+              <p class="text-center">Geçmiş bildiriminiz bulunmuyor.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+      </div>
+      }
+
+      <!-- 4. SEKME: KULLANICI YÖNETİMİ -->
+      @if (activeTab === 'users' && isAdmin) {
+      <div class="card">
+        <div class="card-header">👥 Sistemdeki Kayıtlı Personel ve Yetki Yönetimi</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+            <tr>
+              <th>Ad Soyad</th>
+              <th>E-Posta Adresi</th>
+              <th>Mevcut Rolü</th>
+              <th>Yetki İşlemleri</th>
+              <th>Sistemden Sil</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for (u of users; track u.id) {
+            <tr>
+              <td><strong>{{ u.fullName }}</strong></td>
+              <td>{{ u.email }}</td>
+              <td>
+                      <span class="badge" [class.admin]="u.role === 'ROLE_ADMIN'">
+                        {{ u.role === 'ROLE_ADMIN' ? 'Yönetici (Admin)' : 'Standart Personel' }}
+                      </span>
+              </td>
+              <td>
+                <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" (click)="changeUserRole(u)">
+                  🔄 {{ u.role === 'ROLE_ADMIN' ? 'Personel Yap' : 'Yönetici Yap' }}
+                </button>
+              </td>
+              <td>
+                @if (u.id !== currentUser.id) {
+                <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" (click)="deleteUser(u)">
+                  🗑️ Sil
+                </button>
+                } @else {
+                <small style="color: #8898aa;">(Aktif Hesap)</small>
+                }
+              </td>
+            </tr>
+            }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      }
+
+    </div> <!-- CONTENT-BODY BİTTİ -->
+
+    <!-- MODAL: DOSYA YÖNETİMİ -->
+    @if (selectedActivityForFiles) {
+    <div class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0;">📎 '{{ selectedActivityForFiles.title }}' - Dokümanlar</h3>
+          <button class="btn-danger" style="padding: 4px 8px;" (click)="closeFileManager()">✖</button>
+        </div>
+        <div class="modal-body">
+
+          <div class="upload-section">
+            <label class="file-label">Yeni Dosya Ekle (PDF, Word, Excel, Resim):</label>
+            <div class="upload-controls" style="display: flex; gap: 10px; margin-top: 10px;">
+              <input type="file" (change)="onFileSelected($event)" class="file-input" />
+              <button class="btn-primary" [disabled]="!selectedFileToUpload || isUploading" (click)="uploadSelectedFile()">
+                {{ isUploading ? '⏳ Yükleniyor...' : '⬆ Yükle' }}
+              </button>
+            </div>
+          </div>
+
+          <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e9ecef;" />
+
+          <h4 style="margin-bottom: 10px;">Mevcut Ekler ({{ activityFiles.length }} Dosya)</h4>
+          <div class="file-list">
+            @for (file of activityFiles; track file.id) {
+            <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 5px;">
+              <div class="file-info" style="display: flex; align-items: center; gap: 10px;">
+                <span class="file-icon" style="font-size: 1.5rem;">📄</span>
+                <div>
+                  <strong style="display: block;">{{ file.originalName }}</strong>
+                  <small style="color: #8898aa;">{{ file.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
+                </div>
+              </div>
+              <a [href]="getDownloadLink(file.id)" target="_blank" class="btn-success" style="padding: 6px 12px; text-decoration: none; border-radius: 4px;">⬇ İndir</a>
+            </div>
+            }
+            @if (activityFiles.length === 0) {
+            <p class="text-center" style="padding: 10px; color: #8898aa;">Bu faaliyete henüz bir dosya eklenmemiş.</p>
+            }
+          </div>
+
+        </div>
+      </div>
+    </div>
+    }
+
+  </main>
+</div>
